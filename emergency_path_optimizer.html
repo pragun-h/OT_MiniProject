@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Emergency Vehicle Path Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --bg2: #161920;
+    --bg3: #1e2128;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8e6df;
+    --text2: #9a9890;
+    --text3: #5c5b58;
+    --green: #1D9E75;
+    --green-dim: rgba(29,158,117,0.15);
+    --red: #E24B4A;
+    --red-dim: rgba(226,75,74,0.15);
+    --blue: #378ADD;
+    --blue-dim: rgba(55,138,221,0.15);
+    --amber: #EF9F27;
+    --amber-dim: rgba(239,159,39,0.15);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 0.5px solid var(--border);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg2);
+  }
+  .header-icon {
+    width: 32px; height: 32px;
+    background: var(--red-dim);
+    border: 0.5px solid var(--red);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  header h1 {
+    font-size: 15px; font-weight: 500; letter-spacing: 0.01em;
+  }
+  header p {
+    font-size: 12px; color: var(--text2);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-top: 2px;
+  }
+  .header-badge {
+    margin-left: auto;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 4px 10px;
+    background: var(--green-dim);
+    border: 0.5px solid var(--green);
+    border-radius: 4px;
+    color: var(--green);
+  }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    height: calc(100vh - 69px);
+  }
+
+  /* Sidebar */
+  aside {
+    background: var(--bg2);
+    border-right: 0.5px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-title {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+
+  .btn-group { display: flex; flex-direction: column; gap: 4px; }
+
+  .btn {
+    background: transparent;
+    border: 0.5px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text2);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); }
+  .btn.active-green { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .btn.active-red { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+  .btn.active-blue { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+  .btn.active-amber { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-green { background: var(--green); }
+  .dot-red { background: var(--red); }
+  .dot-blue { background: var(--blue); }
+  .dot-amber { background: var(--amber); }
+  .dot-gray { background: var(--text3); border-radius: 2px; }
+
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .stat-card {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .stat-label {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+
+  /* Route display */
+  .route-box {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .route-path {
+    font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--blue);
+    word-break: break-all;
+    line-height: 1.8;
+  }
+  .route-path span { color: var(--text3); margin: 0 2px; }
+
+  /* Explanation box */
+  .explain {
+    background: var(--bg3);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text2);
+    flex: 1;
+  }
+  .explain strong { color: var(--text); font-weight: 500; }
+  .etag {
+    display: inline-block;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin: 0 1px;
+  }
+  .etag-green { background: var(--green-dim); color: var(--green); border: 0.5px solid var(--green); }
+  .etag-red   { background: var(--red-dim);   color: var(--red);   border: 0.5px solid var(--red); }
+  .etag-blue  { background: var(--blue-dim);  color: var(--blue);  border: 0.5px solid var(--blue); }
+  .etag-amber { background: var(--amber-dim); color: var(--amber); border: 0.5px solid var(--amber); }
+
+  /* Main canvas area */
+  main {
+    position: relative;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--bg2);
+    flex-wrap: wrap;
+  }
+  .toolbar-sep {
+    width: 0.5px; height: 16px;
+    background: var(--border2);
+    margin: 0 4px;
+  }
+  .tbtn {
+    background: transparent;
+    border: 0.5px solid var(--border2);
+    border-radius: 5px;
+    padding: 5px 11px;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .tbtn:hover { background: var(--bg3); color: var(--text); }
+  .tbtn.on-green { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .tbtn.on-blue  { background: var(--blue-dim);  border-color: var(--blue);  color: var(--blue); }
+  .tbtn.on-amber { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+  .tbtn.on-red   { background: var(--red-dim);   border-color: var(--red);   color: var(--red); }
+
+  .tlabel {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  #cv {
+    flex: 1;
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 16px;
+    padding: 8px 16px;
+    border-top: 0.5px solid var(--border);
+    background: var(--bg2);
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text3);
+  }
+  .legend-swatch {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .legend-line {
+    width: 18px; height: 2px; border-radius: 1px;
+  }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    aside { max-height: 280px; }
+    header h1 { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">&#128657;</div>
+  <div>
+    <h1>Emergency Vehicle Path Optimizer</h1>
+    <p>Dijkstra's Algorithm — Path Optimization Mini Project</p>
+  </div>
+  <div class="header-badge">Optimization Techniques</div>
+</header>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside>
+
+    <div>
+      <div class="section-title">Scenario</div>
+      <div class="btn-group">
+        <button class="btn active-blue" id="sc-grid" onclick="loadScenario('grid')">
+          <span class="dot dot-blue"></span>Grid city
+        </button>
+        <button class="btn" id="sc-ring" onclick="loadScenario('ring')">
+          <span class="dot dot-blue"></span>Ring roads
+        </button>
+        <button class="btn" id="sc-random" onclick="loadScenario('random')">
+          <span class="dot dot-blue"></span>Random map ↻
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Traffic mode</div>
+      <div class="btn-group">
+        <button class="btn" id="tr-normal" onclick="setTraffic('normal')">
+          <span class="dot dot-green"></span>Normal
+        </button>
+        <button class="btn active-amber" id="tr-rush" onclick="setTraffic('rush')">
+          <span class="dot dot-amber"></span>Rush hour <small style="opacity:.6">(* = heavy)</small>
+        </button>
+        <button class="btn" id="tr-clear" onclick="setTraffic('clear')">
+          <span class="dot dot-green"></span>Clear roads (–40%)
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Select mode</div>
+      <div class="btn-group">
+        <button class="btn active-green" id="m-start" onclick="setMode('start')">
+          <span class="dot dot-green"></span>Set start node
+        </button>
+        <button class="btn" id="m-end" onclick="setMode('end')">
+          <span class="dot dot-red"></span>Set destination
+        </button>
+        <button class="btn" id="m-block" onclick="setMode('block')">
+          <span class="dot dot-gray"></span>Block / unblock road
+        </button>
+        <button class="btn" onclick="resetBlocks()" style="margin-top:4px;">
+          Clear all blocks
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Statistics</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total cost</div>
+          <div class="stat-value green" id="sv-cost">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Est. time</div>
+          <div class="stat-value" id="sv-time">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Hops</div>
+          <div class="stat-value" id="sv-hops">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Explored</div>
+          <div class="stat-value" id="sv-exp">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Optimal route</div>
+      <div class="route-box">
+        <div class="route-path" id="route-path">Select start and end to find a route.</div>
+      </div>
+    </div>
+
+    <div style="flex:1;">
+      <div class="section-title">Why this path?</div>
+      <div class="explain" id="explain-box">
+        Click a node after selecting start and destination to compute the optimal path.
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Map area -->
+  <main>
+    <div class="toolbar">
+      <span class="tlabel">Scenario</span>
+      <button class="tbtn on-blue" id="tb-grid" onclick="loadScenario('grid')">Grid</button>
+      <button class="tbtn" id="tb-ring" onclick="loadScenario('ring')">Ring</button>
+      <button class="tbtn" id="tb-random" onclick="loadScenario('random')">Random ↻</button>
+      <div class="toolbar-sep"></div>
+      <span class="tlabel">Traffic</span>
+      <button class="tbtn" id="tb-normal" onclick="setTraffic('normal')">Normal</button>
+      <button class="tbtn on-amber" id="tb-rush" onclick="setTraffic('rush')">Rush hour</button>
+      <button class="tbtn" id="tb-clear" onclick="setTraffic('clear')">Clear</button>
+      <div class="toolbar-sep"></div>
+      <span class="tlabel">Mode</span>
+      <button class="tbtn on-green" id="tb-mstart" onclick="setMode('start')">▶ Start</button>
+      <button class="tbtn" id="tb-mend" onclick="setMode('end')">◎ End</button>
+      <button class="tbtn" id="tb-mblock" onclick="setMode('block')">✕ Block</button>
+      <button class="tbtn" onclick="resetBlocks()" style="margin-left:auto;">Reset blocks</button>
+    </div>
+
+    <canvas id="cv"></canvas>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-swatch" style="background:#1D9E75"></div>Start</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#E24B4A"></div>Destination</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#378ADD"></div>Optimal path</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#2a3a4a"></div>Explored</div>
+      <div class="legend-item"><div class="legend-line" style="background:#E24B4A; opacity:.5"></div>Blocked road</div>
+      <div class="legend-item"><div class="legend-line" style="background:#EF9F27"></div>Heavy traffic</div>
+      <div class="legend-item" style="margin-left:auto;color:#5c5b58;">Click nodes to set start/end &nbsp;·&nbsp; Click near roads to block</div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let scenario = 'grid', trafficMode = 'rush', mode = 'start';
+let nodes = {}, baseEdges = [], edges = [];
+let startN = null, endN = null;
+let blocked = new Set();
+let path = [], visitedNodes = [];
+let trafficMult = {};
+
+// ─── Scenarios ────────────────────────────────────────────────────────────────
+const SCENARIOS = {
+  grid: () => {
+    const labels = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
+    const pos = [
+      [.10,.14],[.37,.10],[.63,.10],[.88,.14],
+      [.08,.40],[.37,.37],[.63,.37],[.90,.40],
+      [.08,.64],[.37,.62],[.63,.62],[.90,.64],
+      [.11,.88],[.37,.88],[.63,.88],[.88,.88]
+    ];
+    const ns = {};
+    labels.forEach((l,i) => ns[l] = {x:pos[i][0], y:pos[i][1]});
+    const es = [
+      ['A','B',4],['B','C',5],['C','D',3],
+      ['E','F',3],['F','G',4],['G','H',5],
+      ['I','J',4],['J','K',3],['K','L',5],
+      ['M','N',6],['N','O',4],['O','P',3],
+      ['A','E',3],['E','I',5],['I','M',4],
+      ['B','F',4],['F','J',6],['J','N',3],
+      ['C','G',5],['G','K',4],['K','O',5],
+      ['D','H',3],['H','L',4],['L','P',6],
+      ['B','E',6],['C','F',5],['F','I',5],
+      ['G','J',4],['H','K',6],['K','N',4],['L','O',5]
+    ];
+    return {nodes:ns, edges:es, start:'A', end:'P'};
+  },
+  ring: () => {
+    const ns = {};
+    const ring = ['N','NE','E','SE','S','SW','W','NW'];
+    ring.forEach((l,i) => {
+      const a = (i/ring.length)*Math.PI*2 - Math.PI/2;
+      ns[l] = {x: 0.5+Math.cos(a)*0.35, y: 0.5+Math.sin(a)*0.40};
+    });
+    ns['HQ']  = {x:0.10, y:0.12};
+    ns['C1']  = {x:0.44, y:0.44};
+    ns['C2']  = {x:0.56, y:0.56};
+    ns['INC'] = {x:0.88, y:0.86};
+    const es = [];
+    for(let i=0;i<ring.length;i++)
+      es.push([ring[i], ring[(i+1)%ring.length], 3+Math.floor(Math.random()*3)]);
+    es.push(
+      ['HQ','N',5],['HQ','NW',4],['HQ','C1',6],
+      ['C1','N',4],['C1','NE',5],['C1','C2',3],['C1','W',4],
+      ['C2','E',4],['C2','SE',5],['C2','C1',3],['C2','S',4],
+      ['INC','SE',4],['INC','E',5],['INC','C2',6]
+    );
+    return {nodes:ns, edges:es, start:'HQ', end:'INC'};
+  },
+  random: () => {
+    const count = 13;
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const ns = {}, pts = [];
+    for(let i=0;i<count;i++){
+      let x,y,ok=false,tries=0;
+      while(!ok && tries<300){
+        x=0.08+Math.random()*0.84; y=0.08+Math.random()*0.84;
+        ok = pts.every(p => Math.hypot(p.x-x,p.y-y) > 0.17);
+        tries++;
+      }
+      ns[letters[i]] = {x,y};
+      pts.push({x,y,id:letters[i]});
+    }
+    const es = [], keys = Object.keys(ns);
+    for(let i=0;i<keys.length;i++){
+      const sorted = [...keys].filter(k=>k!==keys[i])
+        .sort((a,b)=>Math.hypot(ns[a].x-ns[keys[i]].x,ns[a].y-ns[keys[i]].y)
+                    -Math.hypot(ns[b].x-ns[keys[i]].x,ns[b].y-ns[keys[i]].y));
+      const conn = 2+Math.floor(Math.random()*2);
+      for(let j=0;j<Math.min(conn,sorted.length);j++){
+        const k = edgeKey(keys[i],sorted[j]);
+        if(!es.find(e=>edgeKey(e[0],e[1])===k)){
+          const d = Math.hypot(ns[keys[i]].x-ns[sorted[j]].x,ns[keys[i]].y-ns[sorted[j]].y);
+          es.push([keys[i],sorted[j],Math.max(2,Math.round(d*28))]);
+        }
+      }
+    }
+    return {nodes:ns, edges:es, start:keys[0], end:keys[keys.length-1]};
+  }
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function edgeKey(a,b){ return [a,b].sort().join('|'); }
+
+function applyTraffic(es){
+  return es.map(([a,b,w]) => {
+    let w2 = w;
+    if(trafficMode==='rush')  w2 = Math.round(w * (trafficMult[edgeKey(a,b)] || 1));
+    if(trafficMode==='clear') w2 = Math.max(1, Math.round(w*0.6));
+    return [a,b,w2,w];
+  });
+}
+
+function genTrafficMult(es){
+  trafficMult = {};
+  es.forEach(([a,b]) => trafficMult[edgeKey(a,b)] = 0.8 + Math.random()*1.8);
+}
+
+// ─── Dijkstra's Algorithm ─────────────────────────────────────────────────────
+function dijkstra(start, end){
+  const dist={}, prev={}, pq=[], seen=new Set();
+  Object.keys(nodes).forEach(n=>{ dist[n]=Infinity; prev[n]=null; });
+  dist[start]=0; pq.push([0,start]);
+  const vo=[];
+  while(pq.length){
+    pq.sort((a,b)=>a[0]-b[0]);
+    const [d,u] = pq.shift();
+    if(seen.has(u)) continue;
+    seen.add(u); vo.push(u);
+    if(u===end) break;
+    for(const [a,b,w] of edges){
+      let nb = a===u?b : b===u?a : null;
+      if(!nb || seen.has(nb) || blocked.has(edgeKey(a,b))) continue;
+      if(dist[u]+w < dist[nb]){
+        dist[nb]=dist[u]+w; prev[nb]=u;
+        pq.push([dist[nb],nb]);
+      }
+    }
+  }
+  if(dist[end]===Infinity) return {path:[],dist:Infinity,visited:vo};
+  const p=[]; let cur=end;
+  while(cur){ p.unshift(cur); cur=prev[cur]; }
+  return {path:p, dist:dist[end], visited:vo};
+}
+
+function findAltCost(mainPath){
+  if(mainPath.length<3) return Infinity;
+  const mid = Math.floor(mainPath.length/2);
+  const k = edgeKey(mainPath[mid-1],mainPath[mid]);
+  blocked.add(k);
+  const res = dijkstra(startN,endN);
+  blocked.delete(k);
+  return res.dist;
+}
+
+// ─── Canvas Drawing ───────────────────────────────────────────────────────────
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+
+function resize(){
+  const r = cv.parentElement.getBoundingClientRect();
+  cv.width  = r.width;
+  cv.height = r.height - cv.previousElementSibling.offsetHeight - cv.nextElementSibling.offsetHeight;
+}
+
+function getPos(id){
+  return { x: nodes[id].x * cv.width, y: nodes[id].y * cv.height };
+}
+
+function getTrafficColor(origW, newW){
+  if(!origW) return null;
+  const r = newW/origW;
+  if(r>=1.5) return '#E24B4A';
+  if(r>=1.1) return '#EF9F27';
+  if(r<=0.7) return '#1D9E75';
+  return null;
+}
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+
+  // Draw edges
+  for(const [a,b,w,origW] of edges){
+    const pa=getPos(a), pb=getPos(b);
+    const key=edgeKey(a,b);
+    const isBlocked=blocked.has(key);
+    const onPath=path.length>1&&path.some((n,i)=>i<path.length-1&&
+      ((path[i]===a&&path[i+1]===b)||(path[i]===b&&path[i+1]===a)));
+    const tc = getTrafficColor(origW,w);
+
+    ctx.beginPath(); ctx.moveTo(pa.x,pa.y); ctx.lineTo(pb.x,pb.y);
+    if(isBlocked){
+      ctx.strokeStyle='rgba(226,75,74,0.35)'; ctx.lineWidth=2; ctx.setLineDash([6,5]);
+    } else if(onPath){
+      ctx.strokeStyle='#E24B4A'; ctx.lineWidth=4; ctx.setLineDash([]);
+    } else {
+      ctx.strokeStyle=tc||'rgba(255,255,255,0.08)'; ctx.lineWidth=tc?2:1.5; ctx.setLineDash([]);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Edge weight label
+    const mx=(pa.x+pb.x)/2, my=(pa.y+pb.y)/2;
+    if(isBlocked){
+      ctx.font='12px IBM Plex Mono,monospace'; ctx.fillStyle='#E24B4A';
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('✕',mx,my);
+    } else if(!onPath){
+      ctx.font='10px IBM Plex Mono,monospace';
+      ctx.fillStyle=tc?'rgba(239,159,39,0.7)':'rgba(255,255,255,0.2)';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(origW&&origW!==w?w+'*':w, mx, my-5);
+    }
+  }
+
+  // Draw nodes
+  for(const id of Object.keys(nodes)){
+    const p=getPos(id);
+    const isStart=id===startN, isEnd=id===endN;
+    const onPath=path.includes(id);
+    const wasVis=visitedNodes.includes(id)&&!onPath&&!isStart&&!isEnd;
+    const r=isStart||isEnd?19:15;
+
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
+    if(isStart)      ctx.fillStyle='#1D9E75';
+    else if(isEnd)   ctx.fillStyle='#E24B4A';
+    else if(onPath)  ctx.fillStyle='#1a3a5c';
+    else if(wasVis)  ctx.fillStyle='#1e2535';
+    else             ctx.fillStyle='#1e2128';
+    ctx.fill();
+
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
+    if(isStart)      ctx.strokeStyle='#1D9E75';
+    else if(isEnd)   ctx.strokeStyle='#E24B4A';
+    else if(onPath)  ctx.strokeStyle='#378ADD';
+    else if(wasVis)  ctx.strokeStyle='rgba(55,138,221,0.3)';
+    else             ctx.strokeStyle='rgba(255,255,255,0.1)';
+    ctx.lineWidth=isStart||isEnd?2:1; ctx.stroke();
+
+    ctx.font=`${isStart||isEnd?'500 12px':'500 11px'} IBM Plex Mono,monospace`;
+    ctx.fillStyle=isStart?'#fff':isEnd?'#fff':onPath?'#378ADD':wasVis?'rgba(55,138,221,0.5)':'rgba(255,255,255,0.3)';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(id,p.x,p.y);
+  }
+
+  // Start / End labels
+  if(startN){ const p=getPos(startN); ctx.font='10px IBM Plex Mono,monospace'; ctx.fillStyle='#1D9E75'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('START',p.x,p.y+22); }
+  if(endN){   const p=getPos(endN);   ctx.font='10px IBM Plex Mono,monospace'; ctx.fillStyle='#E24B4A'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('END',  p.x,p.y+22); }
+}
+
+// ─── UI Updates ───────────────────────────────────────────────────────────────
+function updateStats(res){
+  const none='—';
+  document.getElementById('sv-cost').textContent = res&&res.dist<Infinity ? res.dist : none;
+  document.getElementById('sv-time').textContent = res&&res.dist<Infinity ? Math.round(res.dist*1.3)+'m' : none;
+  document.getElementById('sv-hops').textContent = path.length>1 ? path.length-1 : none;
+  document.getElementById('sv-exp').textContent  = visitedNodes.length||none;
+
+  const rp = document.getElementById('route-path');
+  if(!res||res.dist===Infinity){
+    rp.innerHTML='<span style="color:#E24B4A">No route found — all paths blocked.</span>';
+  } else if(path.length===0){
+    rp.innerHTML='<span style="color:#5c5b58">Select start and end to compute.</span>';
+  } else {
+    rp.innerHTML = path.map((n,i)=>
+      i<path.length-1 ? `<b style="color:#378ADD">${n}</b><span>→</span>` : `<b style="color:#E24B4A">${n}</b>`
+    ).join(' ');
+  }
+}
+
+function buildExplanation(res){
+  const box = document.getElementById('explain-box');
+  if(!res||!startN||!endN){ box.textContent='Select a start and destination node to compute the optimal route.'; return; }
+  if(res.dist===Infinity){ box.innerHTML='<span style="color:#E24B4A">No route exists — every path between start and destination is blocked.</span>'; return; }
+
+  const altCost = findAltCost(path);
+  const hops    = path.length-1;
+  const bc      = blocked.size;
+  const tm      = trafficMode;
+
+  let trafficNote = '';
+  if(tm==='rush')  trafficNote=` <span class="etag etag-amber">Rush hour</span> weights are active — roads marked <b>*</b> have heavy congestion.`;
+  if(tm==='clear') trafficNote=` <span class="etag etag-green">Clear roads</span> — all costs reduced 40% for emergency corridor.`;
+
+  let blockNote = bc>0 ? ` <span class="etag etag-red">${bc} road${bc>1?'s':''} blocked</span> — algorithm automatically rerouted.` : '';
+
+  let altNote = '';
+  if(altCost<Infinity && altCost>res.dist)
+    altNote=` The next-best alternative costs <strong>${altCost}</strong> — <strong>${altCost-res.dist}</strong> more.`;
+  else if(altCost===Infinity)
+    altNote=' There is no alternative route — this is the only viable path.';
+
+  box.innerHTML=`
+    <strong>Dijkstra's algorithm</strong> explored <strong>${res.visited.length}</strong> nodes
+    and determined <span class="etag etag-blue">${path.join('→')}</span>
+    is optimal with cumulative cost <strong>${res.dist}</strong> across <strong>${hops}</strong> hop${hops!==1?'s':''}.
+    Every other route through the network has a strictly higher total weight.
+    ${altNote}${blockNote}${trafficNote}
+    <br><br>
+    <span style="color:#5c5b58;font-size:11px;">
+      <span class="etag etag-green">green</span> start &nbsp;
+      <span class="etag etag-red">red</span> destination &nbsp;
+      <span class="etag etag-blue">blue outline</span> optimal path &nbsp;
+      faded nodes = explored but not chosen
+    </span>`;
+}
+
+function runAndDraw(){
+  if(!startN||!endN||!nodes[startN]||!nodes[endN]){ draw(); updateStats(null); return; }
+  const res   = dijkstra(startN,endN);
+  path        = res.path;
+  visitedNodes= res.visited;
+  updateStats(res);
+  buildExplanation(res);
+  draw();
+}
+
+// ─── Event Handlers ───────────────────────────────────────────────────────────
+cv.addEventListener('click', function(e){
+  const rect=cv.getBoundingClientRect();
+  const cx=(e.clientX-rect.left)*(cv.width/rect.width);
+  const cy=(e.clientY-rect.top)*(cv.height/rect.height);
+  const W=cv.width, H=cv.height;
+
+  if(mode==='block'){
+    let bestE=null, bestD=999;
+    for(const [a,b] of edges){
+      const mx=(nodes[a].x*W+nodes[b].x*W)/2;
+      const my=(nodes[a].y*H+nodes[b].y*H)/2;
+      const d=Math.hypot(mx-cx,my-cy);
+      if(d<bestD){ bestD=d; bestE=edgeKey(a,b); }
+    }
+    if(bestD<38){ blocked.has(bestE)?blocked.delete(bestE):blocked.add(bestE); runAndDraw(); return; }
+  }
+
+  let bestN=null, bestD=999;
+  for(const id of Object.keys(nodes)){
+    const d=Math.hypot(nodes[id].x*W-cx,nodes[id].y*H-cy);
+    if(d<bestD){ bestD=d; bestN=id; }
+  }
+  if(bestD>42) return;
+  if(mode==='start') startN=bestN;
+  else if(mode==='end') endN=bestN;
+  runAndDraw();
+});
+
+window.addEventListener('resize', ()=>{ resize(); runAndDraw(); });
+
+// ─── Mode/Scenario/Traffic Setters ────────────────────────────────────────────
+function syncBtns(prefix, id, cls){
+  document.querySelectorAll(`[id^="${prefix}"]`).forEach(b=>{
+    b.className = b.tagName==='BUTTON' && b.id.startsWith('tb-') ? 'tbtn' : 'btn';
+  });
+  const el=document.getElementById(id);
+  if(el) el.className = (el.tagName==='BUTTON'&&el.id.startsWith('tb-')?'tbtn ':'btn ')+cls;
+}
+
+function loadScenario(sc){
+  scenario=sc; blocked=new Set();
+  const data=SCENARIOS[sc]();
+  nodes=data.nodes; baseEdges=data.edges;
+  genTrafficMult(baseEdges);
+  edges=applyTraffic(baseEdges);
+  startN=data.start; endN=data.end;
+  // sidebar
+  ['sc-grid','sc-ring','sc-random'].forEach(id=>document.getElementById(id).className='btn');
+  const smap={grid:'sc-grid',ring:'sc-ring',random:'sc-random'};
+  document.getElementById(smap[sc]).className='btn active-blue';
+  // toolbar
+  ['tb-grid','tb-ring','tb-random'].forEach(id=>document.getElementById(id).className='tbtn');
+  const tmap={grid:'tb-grid',ring:'tb-ring',random:'tb-random'};
+  document.getElementById(tmap[sc]).className='tbtn on-blue';
+  runAndDraw();
+}
+
+function setTraffic(t){
+  trafficMode=t; edges=applyTraffic(baseEdges);
+  ['tr-normal','tr-rush','tr-clear'].forEach(id=>document.getElementById(id).className='btn');
+  ['tb-normal','tb-rush','tb-clear'].forEach(id=>document.getElementById(id).className='tbtn');
+  const sc={normal:'active-green',rush:'active-amber',clear:'active-green'};
+  const tc={normal:'on-green',rush:'on-amber',clear:'on-green'};
+  const sm={normal:'tr-normal',rush:'tr-rush',clear:'tr-clear'};
+  const tm={normal:'tb-normal',rush:'tb-rush',clear:'tb-clear'};
+  document.getElementById(sm[t]).className='btn '+sc[t];
+  document.getElementById(tm[t]).className='tbtn '+tc[t];
+  runAndDraw();
+}
+
+function setMode(m){
+  mode=m;
+  ['m-start','m-end','m-block'].forEach(id=>document.getElementById(id).className='btn');
+  ['tb-mstart','tb-mend','tb-mblock'].forEach(id=>document.getElementById(id).className='tbtn');
+  const sc={start:'active-green',end:'active-red',block:'active-red'};
+  const tc={start:'on-green',end:'on-red',block:'on-red'};
+  const sm={start:'m-start',end:'m-end',block:'m-block'};
+  const tm={start:'tb-mstart',end:'tb-mend',block:'tb-mblock'};
+  document.getElementById(sm[m]).className='btn '+sc[m];
+  document.getElementById(tm[m]).className='tbtn '+tc[m];
+}
+
+function resetBlocks(){ blocked=new Set(); runAndDraw(); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+window.loadScenario=loadScenario;
+window.setTraffic=setTraffic;
+window.setMode=setMode;
+window.resetBlocks=resetBlocks;
+
+resize();
+loadScenario('grid');
+</script>
+</body>
+</html>
